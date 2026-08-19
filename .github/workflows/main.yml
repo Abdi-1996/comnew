@@ -167,8 +167,6 @@ jobs:
           path = os.environ['PLIST']
           with open(path, 'rb') as f:
               info = plistlib.load(f)
-          # PC Remote uses Network.framework for the actual private HTTP transport.
-          # These keys are only an additional compatibility fallback.
           info['NSAppTransportSecurity'] = {
               'NSAllowsArbitraryLoads': True,
               'NSAllowsLocalNetworking': True,
@@ -231,6 +229,7 @@ jobs:
           name: ComfyRemote-IPA
           path: ComfyRemote.ipa
           if-no-files-found: error
+
   windows:
     name: Build Optimized PC Server
     runs-on: windows-latest
@@ -262,9 +261,10 @@ jobs:
           Expand-Archive -Path $zip.FullName -DestinationPath $dest -Force
 
           $gui = Get-ChildItem -Path $dest -Recurse -File -Filter gui.py -ErrorAction SilentlyContinue |
-            Where-Object { $_.FullName -match '[\/]windows[\/]gui\.py$' } | Select-Object -First 1
+            Where-Object { $_.Directory -and $_.Directory.Name -ieq 'windows' } |
+            Select-Object -First 1
           if (-not $gui) { throw "windows/gui.py is not present inside $($zip.Name)" }
-          Write-Host "Source archive extracted successfully."
+          Write-Host "Source archive extracted successfully: $($gui.FullName)"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -275,8 +275,8 @@ jobs:
         id: server
         shell: pwsh
         run: |
-          $gui = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -File -Filter gui.py |
-            Where-Object { $_.FullName -match '[\\/]windows[\\/]gui\.py$' } |
+          $gui = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -File -Filter gui.py -ErrorAction SilentlyContinue |
+            Where-Object { $_.Directory -and $_.Directory.Name -ieq 'windows' } |
             Select-Object -First 1
           if (-not $gui) { throw "windows/gui.py not found" }
           Write-Host "Using $($gui.FullName)"
@@ -341,4 +341,3 @@ jobs:
           name: PCRemoteServer-ComfyOptimized
           path: PCRemote-Windows
           if-no-files-found: error
-
